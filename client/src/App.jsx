@@ -180,6 +180,7 @@ export default function App() {
   const activeLyricIndex = getActiveLyricIndex(syncedLyrics, sessionState?.currentPositionMs ?? 0);
   const hasSyncedLyrics = syncedLyrics.length > 0;
   const hasActiveRoom = Boolean(roomCode && role);
+  const [quota, setQuota] = useState(null);
   const showVisibleMobileVideo = Boolean(
     isHostView &&
     isMobileDevice &&
@@ -349,6 +350,30 @@ export default function App() {
     };
   }, [roomCode]);
 
+  useEffect(() => {
+    if (!roomCode) return;
+
+    void fetchQuota();
+
+    const interval = setInterval(fetchQuota, 60000);
+    return () => clearInterval(interval);
+  }, [roomCode]);
+
+  async function fetchQuota() {
+    try {
+      const res = await fetch(`${API}/api/youtube/quota`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to fetch quota");
+      }
+
+      setQuota(data);
+    } catch (err) {
+      console.error("Quota fetch failed:", err);
+    }
+  }
+
   async function performYouTubeSearch() {
     const trimmedQuery = youtubeQuery.trim();
 
@@ -376,6 +401,7 @@ export default function App() {
       }
 
       setYoutubeResults(data.items);
+      await fetchQuota();
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
@@ -1197,7 +1223,7 @@ export default function App() {
                       className="text-input search-input"
                       value={youtubeQuery}
                       onChange={(event) => setYoutubeQuery(event.target.value)}
-                      placeholder="Search YouTube music"
+                      placeholder="Search music..."
                   />
 
                   {/* 🔶 BUTTON INSIDE */}
@@ -1344,13 +1370,40 @@ export default function App() {
             </div>
           </section>
 
-          {(statusMessage || errorMessage || isUploading) ? (
-            <section className="card">
-              {statusMessage ? <p className="message success">{statusMessage}</p> : null}
-              {errorMessage ? <p className="message error">{errorMessage}</p> : null}
-              {isUploading ? <p className="muted">Uploading file...</p> : null}
-            </section>
-          ) : null}
+          <section className="card">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">YouTube API</p>
+                <h2>Daily Quota</h2>
+              </div>
+            </div>
+
+            {quota ? (
+                <div className="quota-card">
+                  <div className="quota-header">
+                    <span className="quota-label">Usage</span>
+                    <strong>
+                      {quota.used} / {quota.limit}
+                    </strong>
+                  </div>
+
+                  <div className="quota-bar">
+                    <div
+                        className="quota-fill"
+                        style={{
+                          width: `${(quota.used / quota.limit) * 100}%`
+                        }}
+                    />
+                  </div>
+
+                  <p className="muted quota-remaining">
+                    {quota.remaining} units remaining • resets daily
+                  </p>
+                </div>
+            ) : (
+                <p className="muted">Loading quota...</p>
+            )}
+          </section>
         </div>
       </section>
     </main>

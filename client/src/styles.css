@@ -943,42 +943,99 @@ input {
   }
 }
 
+/* Wrapper (already good, just small tweak) */
 .search-input-wrap.with-button {
   position: relative;
   display: flex;
   align-items: center;
 }
 
+/* Input spacing */
 .search-input-wrap.with-button .search-input {
   width: 100%;
-  padding-right: 110px; /* space for button */
+  padding-right: 120px; /* space for button */
 }
 
-/* 🔶 Button inside input */
+/* 🔶 THEMED BUTTON */
 .search-btn {
   position: absolute;
   right: 6px;
-  height: 70%;
-  padding: 0 14px;
-  border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #ffb347, #ff8c00); /* yellow-orange */
+  top: 50%;
+  transform: translateY(-50%);
+  height: calc(100% - 10px);
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+
+  /* 🎨 match your app gradient */
+  background: linear-gradient(135deg, var(--accent-alt), var(--accent));
   color: #1a1a1a;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+
+  /* ✨ glassy + glow */
+  box-shadow:
+          0 4px 14px rgba(255, 140, 66, 0.25),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 160ms ease;
 }
 
-/* hover effect */
+/* Hover = subtle lift (matches your buttons) */
 .search-btn:hover {
-  filter: brightness(1.1);
-  transform: scale(1.03);
+  transform: translateY(-50%) translateY(-1px);
+  filter: brightness(1.05);
 }
 
-/* disabled state */
+/* Active click */
+.search-btn:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+/* Disabled */
 .search-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
+}
+
+.quota-card {
+  display: grid;
+  gap: 10px;
+}
+
+.quota-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quota-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* Progress bar */
+.quota-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/* Fill */
+.quota-fill {
+  height: 100%;
+  background: linear-gradient(135deg, var(--accent-alt), var(--accent));
+  transition: width 0.3s ease;
+}
+
+/* Remaining text */
+.quota-remaining {
+  font-size: 0.85rem;
 }
 
 @media (min-width: 1280px) {
