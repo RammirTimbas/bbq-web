@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import YouTubePlayer from "./components/YouTubePlayer.jsx";
 
+const API = import.meta.env.VITE_HOST_URL;
+
 const STORAGE_KEYS = {
   sessionId: "bbq-session-id",
   nickname: "bbq-nickname",
@@ -212,14 +214,14 @@ export default function App() {
 
   useEffect(() => {
     if (!hasActiveRoom) {
-      fetch("/api/session")
+      fetch(`${API}/api/session`)
         .then((response) => response.json())
         .then((data) => setSessionState(data))
         .catch(() => {});
       return;
     }
 
-    fetch(`/api/session?room=${encodeURIComponent(roomCode)}`)
+    fetch(`${API}/api/session?room=${encodeURIComponent(roomCode)}`)
       .then(async (response) => {
         const data = await response.json();
 
@@ -244,7 +246,7 @@ export default function App() {
     localStorage.setItem(STORAGE_KEYS.role, role);
     localStorage.setItem(STORAGE_KEYS.roomCode, roomCode);
 
-    const socket = io({
+    const socket = io(API,{
       auth: {
         sessionId,
         nickname,
@@ -319,7 +321,7 @@ export default function App() {
       searchAbortRef.current = controller;
 
       try {
-        const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(trimmedQuery)}`, {
+        const response = await fetch(`${API}/api/youtube/search?q=${encodeURIComponent(trimmedQuery)}`, {
           headers: {
             "x-room-code": roomCode
           },
@@ -345,7 +347,41 @@ export default function App() {
       window.clearTimeout(searchTimerRef.current);
       searchAbortRef.current?.abort();
     };
-  }, [roomCode, youtubeQuery]);
+  }, [roomCode]);
+
+  async function performYouTubeSearch() {
+    const trimmedQuery = youtubeQuery.trim();
+
+    if (!roomCode || trimmedQuery.length < 3) {
+      setYoutubeResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      const response = await fetch(
+          `${API}/api/youtube/search?q=${encodeURIComponent(trimmedQuery)}`,
+          {
+            headers: {
+              "x-room-code": roomCode
+            }
+          }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Search failed.");
+      }
+
+      setYoutubeResults(data.items);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsSearching(false);
+    }
+  }
 
   useEffect(() => {
     if (!isHostView || !localPlayerRef.current) {
@@ -530,7 +566,7 @@ export default function App() {
       setNickname(nextNickname);
 
       if (role === "host") {
-        const response = await fetch("/api/rooms", {
+        const response = await fetch(`${API}/api/rooms`, {
           method: "POST",
           headers: {
             "x-session-id": sessionId,
@@ -547,7 +583,7 @@ export default function App() {
         setRoomCodeDraft(data.roomCode);
         setSessionState(data.state);
       } else {
-        const response = await fetch(`/api/session?room=${encodeURIComponent(nextRoomCode)}`);
+        const response = await fetch(`${API}/api/session?room=${encodeURIComponent(nextRoomCode)}`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -579,7 +615,7 @@ export default function App() {
       const formData = new FormData();
       formData.append("media", file);
 
-      const response = await fetch("/api/uploads", {
+      const response = await fetch(`${API}/api/uploads`, {
         method: "POST",
         headers: {
           "x-session-id": sessionId,
@@ -1147,40 +1183,54 @@ export default function App() {
               </label>
 
               <div className="stack">
-                <label className="search-input-wrap">
-                  <span className="search-input-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.06-1.06-4.44-4.43A6.5 6.5 0 0 0 10.5 4Zm0 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
+                <div className="search-input-wrap with-button">
+    <span className="search-input-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path
+            d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.06-1.06-4.44-4.43A6.5 6.5 0 0 0 10.5 4Zm0 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"
+            fill="currentColor"
+        />
+      </svg>
+    </span>
+
                   <input
-                    className="text-input search-input"
-                    value={youtubeQuery}
-                    onChange={(event) => setYoutubeQuery(event.target.value)}
-                    placeholder="Search YouTube music"
+                      className="text-input search-input"
+                      value={youtubeQuery}
+                      onChange={(event) => setYoutubeQuery(event.target.value)}
+                      placeholder="Search YouTube music"
                   />
-                </label>
+
+                  {/* 🔶 BUTTON INSIDE */}
+                  <button
+                      className="search-btn"
+                      type="button"
+                      onClick={performYouTubeSearch}
+                      disabled={isSearching}
+                  >
+                    {isSearching ? "..." : "Search"}
+                  </button>
+                </div>
+
                 {youtubeQuery.trim() && youtubeQuery.trim().length < 3 ? (
-                  <p className="muted">Type at least 3 characters before searching.</p>
+                    <p className="muted">Type at least 3 characters before searching.</p>
                 ) : null}
+
                 {isSearching ? <p className="muted">Searching...</p> : null}
+
                 <div className="search-results">
                   {youtubeResults.map((result) => (
-                    <button
-                      key={result.videoId}
-                      className="search-item"
-                      type="button"
-                      onClick={() => handleSearchResultClick(result)}
-                    >
-                      <img className="queue-thumbnail" src={result.thumbnail} alt={result.title} />
-                      <span className="search-result-copy">
-                        <strong>{result.title}</strong>
-                        <span>{result.artist || "YouTube"}</span>
-                      </span>
-                    </button>
+                      <button
+                          key={result.videoId}
+                          className="search-item"
+                          type="button"
+                          onClick={() => handleSearchResultClick(result)}
+                      >
+                        <img className="queue-thumbnail" src={result.thumbnail} alt={result.title} />
+                        <span className="search-result-copy">
+          <strong>{result.title}</strong>
+          <span>{result.artist || "YouTube"}</span>
+        </span>
+                      </button>
                   ))}
                 </div>
               </div>

@@ -943,6 +943,44 @@ input {
   }
 }
 
+.search-input-wrap.with-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input-wrap.with-button .search-input {
+  width: 100%;
+  padding-right: 110px; /* space for button */
+}
+
+/* 🔶 Button inside input */
+.search-btn {
+  position: absolute;
+  right: 6px;
+  height: 70%;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffb347, #ff8c00); /* yellow-orange */
+  color: #1a1a1a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* hover effect */
+.search-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.03);
+}
+
+/* disabled state */
+.search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (min-width: 1280px) {
   .layout-grid {
     grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.8fr);
