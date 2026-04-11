@@ -33,6 +33,7 @@ const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 100);
 const skipThresholdRatio = Number(process.env.SKIP_THRESHOLD_RATIO ?? 0.5);
 const maxItemsPerUser = Number(process.env.MAX_ITEMS_PER_USER ?? 5);
 const autoDeleteUploadedFiles = String(process.env.AUTO_DELETE_UPLOADED_FILES ?? "false") === "true";
+const hostReconnectGraceMs = Number(process.env.HOST_RECONNECT_GRACE_MS ?? 15000);
 const youtubeSearchCacheTtlMs = Number(process.env.YOUTUBE_SEARCH_CACHE_TTL_MS ?? 5 * 60 * 1000);
 const youtubeVideoCacheTtlMs = Number(process.env.YOUTUBE_VIDEO_CACHE_TTL_MS ?? 60 * 60 * 1000);
 const youtubeSearchRateLimitWindowMs = Number(process.env.YOUTUBE_SEARCH_RATE_LIMIT_WINDOW_MS ?? 60 * 1000);
@@ -61,14 +62,13 @@ const io = new Server(httpServer, {
 });
 
 const rooms = new Map();
+const hostDisconnectTimers = new Map();
 const youtubeSearchCache = new Map();
 const youtubeVideoCache = new Map();
 const youtubeSearchRateLimit = new Map();
 const youtubeLinkRateLimit = new Map();
 const lyricsCache = new Map();
 const lyricsRequests = new Map();
-const hostDisconnectTimers = new Map();
-const hostReconnectGraceMs = Number(process.env.HOST_RECONNECT_GRACE_MS ?? 15000);
 
 function trimTrailingSlash(value) {
   return value.replace(/\/+$/, "");
@@ -199,13 +199,6 @@ async function closeRoom(roomCode) {
   }
 
   io.to(room.code).emit("room:closed");
-  const pendingTimer = hostDisconnectTimers.get(room.code);
-
-  if (pendingTimer) {
-    clearTimeout(pendingTimer);
-    hostDisconnectTimers.delete(room.code);
-  }
-
   await destroyRoom(room.code);
 }
 
@@ -672,6 +665,7 @@ app.get("/api/youtube/search", async (req, res) => {
         part: "snippet",
         q: query,
         type: "video",
+        videoEmbeddable: "true",
         maxResults: 8
       }
     });

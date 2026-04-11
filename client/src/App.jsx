@@ -409,6 +409,41 @@ export default function App() {
     }
   }
 
+  function handleYouTubeSearchKeyDown(event) {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    window.clearTimeout(searchTimerRef.current);
+    searchAbortRef.current?.abort();
+    void performYouTubeSearch();
+  }
+
+  function tryResumeHostPlayback() {
+    if (!isHostView || !currentItem || !sessionState?.isPlaying) {
+      return;
+    }
+
+    if (currentItem.type === "local") {
+      localPlayerRef.current?.play()
+        .then(() => {
+          setPlaybackNeedsResume(false);
+          setShouldPromptResume(false);
+        })
+        .catch(() => {
+          setPlaybackNeedsResume(true);
+          setShouldPromptResume(true);
+        });
+      return;
+    }
+
+    if (currentItem.type === "youtube" && !mobileHostYouTubeUnsupported && !mobileYouTubeNeedsStart) {
+      youtubePlayerRef.current?.play();
+      setResumeToken((value) => value + 1);
+    }
+  }
+
   useEffect(() => {
     if (!isHostView || !localPlayerRef.current) {
       return;
@@ -436,6 +471,47 @@ export default function App() {
 
     localPlayerRef.current.pause();
   }, [currentItem?.id, currentItem?.type, isHostView, sessionState?.isPlaying]);
+
+  useEffect(() => {
+    tryResumeHostPlayback();
+  }, [
+    currentItem?.id,
+    currentItem?.type,
+    isHostView,
+    mobileHostYouTubeUnsupported,
+    mobileYouTubeNeedsStart,
+    sessionState?.isPlaying
+  ]);
+
+  useEffect(() => {
+    if (!isHostView) {
+      return undefined;
+    }
+
+    const retryPlayback = () => {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+
+      tryResumeHostPlayback();
+    };
+
+    window.addEventListener("focus", retryPlayback);
+    window.addEventListener("pageshow", retryPlayback);
+    document.addEventListener("visibilitychange", retryPlayback);
+
+    return () => {
+      window.removeEventListener("focus", retryPlayback);
+      window.removeEventListener("pageshow", retryPlayback);
+      document.removeEventListener("visibilitychange", retryPlayback);
+    };
+  }, [
+    currentItem?.id,
+    isHostView,
+    mobileHostYouTubeUnsupported,
+    mobileYouTubeNeedsStart,
+    sessionState?.isPlaying
+  ]);
 
   useEffect(() => {
     lastAllowedTimeRef.current = 0;
@@ -1223,6 +1299,7 @@ export default function App() {
                       className="text-input search-input"
                       value={youtubeQuery}
                       onChange={(event) => setYoutubeQuery(event.target.value)}
+                      onKeyDown={handleYouTubeSearchKeyDown}
                       placeholder="Search music..."
                   />
 

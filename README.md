@@ -11,6 +11,10 @@ Collaborative LAN music/video queue built with Express, Socket.IO, Multer, React
 - Upload limits, spam limits, and duplicate vote protection
 - Local IP and QR code display for easy LAN access
 
+# April  11, 2026 Patch
+- TODO Room doesnt end on host leaving
+- 
+
 ## Setup
 
 1. Install dependencies:
